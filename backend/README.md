@@ -1,1 +1,1 @@
-Test feature to close ticket automatically.
+Test feature to close ticket automatically using Closes #18.
