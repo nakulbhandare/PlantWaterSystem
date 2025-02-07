@@ -1,1 +1,1 @@
-Test feature
+Test feature to close ticket automatically.
