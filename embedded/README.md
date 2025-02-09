@@ -10,8 +10,8 @@ This guide will walk you through setting up a new Raspberry Pi for your Soil Moi
 
 ---
 
-## 1. Hardware Requirements
-### Components Needed
+## **1. Hardware Requirements**
+### **Components Needed**
 1. Raspberry Pi (any model with GPIO support)
 2. Capacitive Soil Moisture Sensor
 3. ADS1115 ADC Module
@@ -20,9 +20,9 @@ This guide will walk you through setting up a new Raspberry Pi for your Soil Moi
 
 ---
 
-## 2. Wiring Connections
+## **2. Wiring Connections**
 
-### ADS1115 (ADC) to Raspberry Pi
+### **ADS1115 (ADC) to Raspberry Pi**
 | ADS1115 Pin | Raspberry Pi GPIO Pin |
 |-------------|------------------------|
 | VDD         | 3.3V (Pin 1)           |
@@ -32,7 +32,7 @@ This guide will walk you through setting up a new Raspberry Pi for your Soil Moi
 | ADDR        | GPIO7 (Pin 7)           |
 | ALRT        | GPIO0 (Pin 11)          |
 
-### Capacitive Soil Moisture Sensor to ADS1115
+### **Capacitive Soil Moisture Sensor to ADS1115**
 | Sensor Pin | ADS1115 Pin |
 |------------|-------------|
 | VCC        | 5V (Pin 2)  |
@@ -42,7 +42,7 @@ This guide will walk you through setting up a new Raspberry Pi for your Soil Moi
 | Sensor 3 AO| A2          |
 | Sensor 4 AO| A3          |
 
-### Capacitive Soil Moisture Sensor Digital Output to Raspberry Pi
+### **Capacitive Soil Moisture Sensor Digital Output to Raspberry Pi**
 | Sensor DO Pin | Raspberry Pi GPIO      |
 |---------------|-------------------------|
 | Sensor 1 AO   | GPIO8 (Pin 8)           |
@@ -52,65 +52,73 @@ This guide will walk you through setting up a new Raspberry Pi for your Soil Moi
 
 ---
 
-## 3. Setting Up the Raspberry Pi
+## **3. Setup Options**
 
-### Step 1: Update Raspberry Pi OS
-Run the following commands to update your system:
+### **Automated Setup**
+Run the following command to clone the repository, install dependencies, and configure the system automatically:
+
 ```bash
-sudo apt update && sudo apt upgrade -y
+bash <(curl -L https://raw.githubusercontent.com/SE4CPS/PlantWaterSystem/embedded-code/Embedded/setup.sh)
 ```
 
-### Step 2: Enable I2C Communication
-Check if I2C is enabled:
-```bash
-ls /dev/i2c-*
-```
+This command performs the following tasks:
+- Clones the PlantWaterSystem repository.
+- Updates your Raspberry Pi OS.
+- Installs required packages and Python libraries.
+- Verifies I2C connection.
+- Configures auto-start for the `plant_monitor.py` script using `systemd`.
 
-If no response is returned, enable I2C using:
-```bash
-sudo raspi-config
-```
-Navigate to **Interfacing Options** → **I2C** → Enable.
+Check the service status after setup:
 
-### Step 3: Install Required Packages
-Install Python and necessary libraries:
 ```bash
-sudo apt install pip
-sudo pip install RPi.GPIO adafruit-circuitpython-ads1x15 --break-system-packages
-sudo apt install sqlite3
-sudo apt install -y python3-smbus i2c-tools
+sudo systemctl status plant_monitor.service
 ```
-
-### Step 4: Verify I2C Devices
-Check if the ADS1115 is detected:
-```bash
-i2cdetect -y 1
-```
-You should see an address like `0x48`, confirming proper connection.
 
 ---
 
-## 4. Deploying the Python Script
+### **Manual Setup (or for Debugging)**
 
-### Step 1: Clone the Repository
-Clone the repository and navigate into the directory:
+If you prefer a manual setup or need to debug, follow these steps:
+
+### **Step 1: Clone the Repository**
 ```bash
 git clone git@github.com:SE4CPS/PlantWaterSystem.git
 cd PlantWaterSystem/Embedded
 ```
 
-The `plant_monitor.py` and `send_data_api.py` scripts are already present in this directory.
-
----
-
-## 5. Running the Python Script
-Make the script executable:
+### **Step 2: Update Raspberry Pi OS**
 ```bash
-chmod +x plant_monitor.py
+sudo apt update && sudo apt upgrade -y
 ```
 
-Run the script:
+### **Step 3: Enable I2C Communication**
+
+Check if I2C is enabled:
 ```bash
+ls /dev/i2c-*
+```
+
+If you don’t see a response, enable I2C:
+```bash
+sudo raspi-config
+```
+Navigate to **Interfacing Options** → **I2C** → Enable.
+
+### **Step 4: Install Required Packages**
+```bash
+sudo apt install -y python3-pip python3-smbus i2c-tools sqlite3
+sudo pip3 install RPi.GPIO adafruit-circuitpython-ads1x15 --break-system-packages
+```
+
+### **Step 5: Verify I2C Devices**
+```bash
+i2cdetect -y 1
+```
+Ensure the address `0x48` appears to confirm the connection.
+
+### **Step 6: Set Permissions and Run the Script**
+```bash
+chmod +x plant_monitor.py
 python3 plant_monitor.py
 ```
 
@@ -120,22 +128,16 @@ Starting Plant Sensor Monitoring...
 Raw ADC Value: 18345, Moisture Level: 54.23%, Digital Status: Dry
 ```
 
-To check stored data in SQLite:
-```bash
-sqlite3 plant_sensor_data.db "SELECT * FROM moisture_data;"
-```
+### **Step 7: Set Up Auto-Start (Optional)**
 
----
+#### **Option 1: Using systemd (Recommended)**
 
-## 6. Auto-Start on Boot
-
-### Option 1: Using systemd (Recommended)
 1. Create a service file:
    ```bash
    sudo nano /etc/systemd/system/plant_monitor.service
    ```
 
-2. Paste the following configuration:
+2. Paste the following:
    ```ini
    [Unit]
    Description=Plant Moisture Monitoring Service
@@ -160,18 +162,19 @@ sqlite3 plant_sensor_data.db "SELECT * FROM moisture_data;"
    sudo systemctl start plant_monitor.service
    ```
 
-4. Check if the service is running:
+4. Check the service status:
    ```bash
    sudo systemctl status plant_monitor.service
    ```
 
-### Option 2: Using Cron
+#### **Option 2: Using Cron**
+
 1. Open crontab:
    ```bash
    crontab -e
    ```
 
-2. Add the following line at the end:
+2. Add this line:
    ```bash
    @reboot /usr/bin/python3 /home/pi/PlantWaterSystem/Embedded/plant_monitor.py &
    ```
@@ -180,19 +183,19 @@ sqlite3 plant_sensor_data.db "SELECT * FROM moisture_data;"
 
 ---
 
-## 7. Testing & Debugging
+## **4. Testing & Debugging**
 
-### To View Logs:
+### **To View Logs:**
 ```bash
 journalctl -u plant_monitor.service --follow
 ```
 
-### To Restart the Service:
+### **To Restart the Service:**
 ```bash
 sudo systemctl restart plant_monitor.service
 ```
 
-### To Manually View Data:
+### **To Manually View Data:**
 ```bash
 sqlite3 plant_sensor_data.db "SELECT * FROM moisture_data;"
 ```
