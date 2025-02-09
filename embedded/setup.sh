@@ -15,14 +15,28 @@ cd PlantWaterSystem/Embedded || exit
 echo "Updating Raspberry Pi OS..."
 sudo apt update && sudo apt upgrade -y
 
-# Step 3: Enable I2C Communication (manual step reminder)
-echo "Please ensure I2C is enabled by running: sudo raspi-config (Interfacing Options -> I2C -> Enable)"
-echo "Press Enter to continue after enabling I2C or if it is already enabled."
-read -p ""
+# Step 3: Enable I2C Communication Automatically
+echo "Enabling I2C communication..."
+CONFIG_FILE="/boot/config.txt"
+I2C_LINE="dtparam=i2c_arm=on"
+REBOOT_REQUIRED=false
+
+# Check if I2C is already enabled
+if ! grep -q "$I2C_LINE" "$CONFIG_FILE"; then
+    echo "I2C not enabled. Adding the configuration to $CONFIG_FILE..."
+    sudo bash -c "echo '$I2C_LINE' >> $CONFIG_FILE"
+    REBOOT_REQUIRED=true
+else
+    echo "I2C is already enabled."
+fi
+
+# Install I2C tools (if not installed)
+echo "Installing I2C tools..."
+sudo apt install -y i2c-tools python3-smbus
 
 # Step 4: Install Required Packages
 echo "Installing required packages..."
-sudo apt install -y python3-pip python3-smbus i2c-tools sqlite3
+sudo apt install -y python3-pip sqlite3
 
 echo "Installing necessary Python libraries..."
 sudo pip3 install RPi.GPIO adafruit-circuitpython-ads1x15 --break-system-packages
@@ -63,5 +77,22 @@ echo "Enabling and starting the plant_monitor service..."
 sudo systemctl enable plant_monitor.service
 sudo systemctl start plant_monitor.service
 
+# Step 8: Reboot if required
+if [ "$REBOOT_REQUIRED" = true ]; then
+    echo "The system needs to reboot to apply I2C configuration changes."
+    read -p "Do you want to reboot now? (y/n): " REBOOT_ANSWER
+    if [[ "$REBOOT_ANSWER" == "y" || "$REBOOT_ANSWER" == "Y" ]]; then
+        echo "Rebooting now..."
+        sudo reboot
+    else
+        echo "Please remember to reboot later to apply I2C configuration changes."
+    fi
+else
+    echo "No reboot required."
+fi
+
 echo "Setup is complete. You can now check the service status with:"
 echo "sudo systemctl status plant_monitor.service"
+
+echo "If you want to manually run the script, use:"
+echo "python3 plant_monitor.py"
