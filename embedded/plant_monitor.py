@@ -10,6 +10,7 @@ import logging
 import argparse
 import signal
 import sys
+import os
 from datetime import datetime, timedelta
 
 # Setup logging
@@ -23,15 +24,20 @@ parser.add_argument("--retention_days", type=int, default=7, help="Data retentio
 args = parser.parse_args()
 
 # Database and Interval Setup
-DB_NAME = "plant_sensor_data.db"
+DB_NAME = os.getenv("DB_NAME", "plant_sensor_data.db")
 READ_INTERVAL = args.interval
 RETENTION_DAYS = args.retention_days
 
+# I2C Setup
 i2c = busio.I2C(board.SCL, board.SDA)
 ads = ADS.ADS1115(i2c)
 
-# Start `send_data_api.py` subprocess
-api_process = subprocess.Popen(["python3", "send_data_api.py"])
+# Start `send_data_api.py` subprocess with error handling
+try:
+    api_process = subprocess.Popen(["python3", "send_data_api.py"])
+except Exception as e:
+    logging.error(f"Failed to start send_data_api.py subprocess: {e}")
+    sys.exit(1)
 
 # Sensor Configuration (only active sensors are initialized)
 SENSORS = [
@@ -54,6 +60,18 @@ for sensor in SENSORS:
 
 # Global SQLite connection
 conn = None
+
+# Retry logic for sensor reading
+MAX_RETRIES = 3
+def read_sensor_with_retries(sensor):
+    for attempt in range(MAX_RETRIES):
+        try:
+            return read_sensor_channel(sensor)
+        except Exception as e:
+            logging.warning(f"Attempt {attempt + 1}: Retrying sensor read for {sensor['analog']} due to error: {e}")
+            time.sleep(1)  # Small delay between retries
+    logging.error(f"Failed to read sensor {sensor['analog']} after {MAX_RETRIES} retries.")
+    return 0, 0, "Error"
 
 def handle_shutdown(signum, frame):
     """Handle shutdown signals gracefully."""
@@ -125,7 +143,7 @@ def read_sensors():
         if not sensor["active"]:
             continue
 
-        adc_value, moisture_level, digital_status = read_sensor_channel(sensor)
+        adc_value, moisture_level, digital_status = read_sensor_with_retries(sensor)
         print(f"Sensor {index} - Raw ADC Value: {adc_value}, Moisture Level: {moisture_level:.2f}%, Digital Status: {digital_status}")
         logging.info(f"Sensor {index} - Raw ADC Value: {adc_value}, Moisture Level: {moisture_level:.2f}%, Digital Status: {digital_status}")
         save_to_database(index, moisture_level, digital_status)
@@ -169,7 +187,11 @@ def sensor_health_check():
 def main():
     """Main function to read sensors and store data in SQLite."""
     global conn
-    conn = sqlite3.connect(DB_NAME)
+    try:
+        conn = sqlite3.connect(DB_NAME)
+    except sqlite3.Error as e:
+        logging.error(f"Failed to connect to the database: {e}")
+        sys.exit(1)
     setup_database()
     print("Starting Multi-Sensor Plant Monitoring...")
     GPIO.output(ADDR_PIN, GPIO.HIGH)

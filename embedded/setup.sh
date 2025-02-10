@@ -51,7 +51,6 @@ else
 fi
 
 # Step 6: Set Permissions and Run Python Script
-
 if [ -f "plant_monitor.py" ]; then
     echo "Setting executable permission for the plant_monitor.py script..."
     chmod +x plant_monitor.py
@@ -62,8 +61,7 @@ fi
 # Step 7: Setup Auto-Start with systemd for plant_monitor
 SERVICE_FILE="/etc/systemd/system/plant_monitor.service"
 
-echo "Setting up auto-start for plant_monitor using systemd..."
-sudo bash -c "cat > $SERVICE_FILE" <<EOF
+cat <<EOF | sudo tee $SERVICE_FILE
 [Unit]
 Description=Plant Moisture Monitoring Service
 After=multi-user.target
@@ -74,6 +72,8 @@ WorkingDirectory=/home/pi/PlantWaterSystem/embedded
 StandardOutput=inherit
 StandardError=inherit
 Restart=always
+RestartSec=5
+TimeoutStopSec=10
 User=pi
 
 [Install]
@@ -82,6 +82,10 @@ EOF
 
 echo "Reloading systemd daemon..."
 sudo systemctl daemon-reload
+if [ $? -ne 0 ]; then
+    echo "Failed to reload systemd daemon. Please check for errors."
+    exit 1
+fi
 
 sudo systemctl enable plant_monitor.service
 sudo systemctl start plant_monitor.service
@@ -92,7 +96,7 @@ SEND_API_SERVICE_FILE="/etc/systemd/system/send_data_api.service"
 read -p "Do you want to set up send_data_api.py as a service? (y/n): " SETUP_SEND_API
 if [[ "$SETUP_SEND_API" == "y" || "$SETUP_SEND_API" == "Y" ]]; then
     echo "Setting up auto-start for send_data_api using systemd..."
-    sudo bash -c "cat > $SEND_API_SERVICE_FILE" <<EOF
+    cat <<EOF | sudo tee $SEND_API_SERVICE_FILE
 [Unit]
 Description=Send Data API Service
 After=multi-user.target
@@ -103,6 +107,8 @@ WorkingDirectory=/home/pi/PlantWaterSystem/embedded
 StandardOutput=inherit
 StandardError=inherit
 Restart=always
+RestartSec=5
+TimeoutStopSec=10
 User=pi
 
 [Install]
@@ -111,6 +117,10 @@ EOF
 
     echo "Reloading systemd daemon..."
     sudo systemctl daemon-reload
+    if [ $? -ne 0 ]; then
+        echo "Failed to reload systemd daemon. Please check for errors."
+        exit 1
+    fi
 
     echo "Enabling and starting the send_data_api service..."
     sudo systemctl enable send_data_api.service
@@ -121,13 +131,18 @@ fi
 
 # Step 9: Reboot if required
 if [ "$REBOOT_REQUIRED" = true ]; then
-    echo "The system needs to reboot to apply I2C configuration changes."
-    read -p "Do you want to reboot now? (y/n): " REBOOT_ANSWER
-    if [[ "$REBOOT_ANSWER" == "y" || "$REBOOT_ANSWER" == "Y" ]]; then
-        echo "Rebooting now..."
-        sudo reboot
+    echo "Checking if reboot is necessary..."
+    if [ -f /var/run/reboot-required ]; then
+        echo "The system needs to reboot to apply I2C configuration changes."
+        read -p "Do you want to reboot now? (y/n): " REBOOT_ANSWER
+        if [[ "$REBOOT_ANSWER" == "y" || "$REBOOT_ANSWER" == "Y" ]]; then
+            echo "Rebooting now..."
+            sudo reboot
+        else
+            echo "Please remember to reboot later to apply I2C configuration changes."
+        fi
     else
-        echo "Please remember to reboot later to apply I2C configuration changes."
+        echo "No reboot is required according to the system check."
     fi
 else
     echo "No reboot required."
