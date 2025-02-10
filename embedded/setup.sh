@@ -9,7 +9,7 @@ if [ ! -d "PlantWaterSystem" ]; then
 fi
 
 # Navigate to the directory
-cd PlantWaterSystem/Embedded || exit
+cd PlantWaterSystem/embedded || exit
 
 # Step 2: Update Raspberry Pi OS
 echo "Updating Raspberry Pi OS..."
@@ -59,8 +59,8 @@ Description=Plant Moisture Monitoring Service
 After=multi-user.target
 
 [Service]
-ExecStart=/usr/bin/python3 /home/pi/PlantWaterSystem/Embedded/plant_monitor.py
-WorkingDirectory=/home/pi/PlantWaterSystem/Embedded
+ExecStart=/usr/bin/python3 /home/pi/PlantWaterSystem/embedded/plant_monitor.py
+WorkingDirectory=/home/pi/PlantWaterSystem/embedded
 StandardOutput=inherit
 StandardError=inherit
 Restart=always
