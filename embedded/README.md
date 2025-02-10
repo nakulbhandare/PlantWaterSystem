@@ -1,4 +1,3 @@
-
 # Setting Up PlantWaterSystem on a New Raspberry Pi
 
 This guide will walk you through setting up a new Raspberry Pi for your Soil Moisture Monitoring System using:
@@ -74,6 +73,12 @@ Check the service status after setup:
 sudo systemctl status plant_monitor.service
 ```
 
+If you choose to set up the `send_data_api.py` service, check its status with:
+
+```bash
+sudo systemctl status send_data_api.service
+```
+
 ---
 
 ### **Manual Setup (or for Debugging)**
@@ -132,7 +137,7 @@ Raw ADC Value: 18345, Moisture Level: 54.23%, Digital Status: Dry
 
 #### **Option 1: Using systemd (Recommended)**
 
-1. Create a service file:
+1. Create a service file for `plant_monitor.py`:
    ```bash
    sudo nano /etc/systemd/system/plant_monitor.service
    ```
@@ -167,19 +172,44 @@ Raw ADC Value: 18345, Moisture Level: 54.23%, Digital Status: Dry
    sudo systemctl status plant_monitor.service
    ```
 
-#### **Option 2: Using Cron**
+#### **Option 2: Set Up Auto-Start for `send_data_api.py`**
 
-1. Open crontab:
+If you want to run `send_data_api.py` automatically, follow these steps:
+
+1. Create a service file for `send_data_api.py`:
    ```bash
-   crontab -e
+   sudo nano /etc/systemd/system/send_data_api.service
    ```
 
-2. Add this line:
-   ```bash
-   @reboot /usr/bin/python3 /home/pi/PlantWaterSystem/Embedded/plant_monitor.py &
+2. Paste the following:
+   ```ini
+   [Unit]
+   Description=Send Data API Service
+   After=multi-user.target
+
+   [Service]
+   ExecStart=/usr/bin/python3 /home/pi/PlantWaterSystem/Embedded/send_data_api.py
+   WorkingDirectory=/home/pi/PlantWaterSystem/Embedded
+   StandardOutput=inherit
+   StandardError=inherit
+   Restart=always
+   User=pi
+
+   [Install]
+   WantedBy=multi-user.target
    ```
 
-3. Save and exit.
+3. Enable and start the service:
+   ```bash
+   sudo systemctl daemon-reload
+   sudo systemctl enable send_data_api.service
+   sudo systemctl start send_data_api.service
+   ```
+
+4. Check the service status:
+   ```bash
+   sudo systemctl status send_data_api.service
+   ```
 
 ---
 
@@ -189,13 +219,20 @@ Raw ADC Value: 18345, Moisture Level: 54.23%, Digital Status: Dry
 ```bash
 journalctl -u plant_monitor.service --follow
 ```
+For `send_data_api.py`:
+```bash
+journalctl -u send_data_api.service --follow
+```
 
 ### **To Restart the Service:**
 ```bash
 sudo systemctl restart plant_monitor.service
 ```
+For `send_data_api.py`:
+```bash
+sudo systemctl restart send_data_api.service
+```
 
 ### **To Manually View Data:**
 ```bash
 sqlite3 plant_sensor_data.db "SELECT * FROM moisture_data;"
-```

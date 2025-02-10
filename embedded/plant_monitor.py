@@ -1,3 +1,4 @@
+import subprocess  # Import subprocess to manage the API script
 import time
 import sqlite3
 import board
@@ -9,6 +10,7 @@ import logging
 import argparse
 import signal
 import sys
+from datetime import datetime, timedelta
 
 # Setup logging
 logging.basicConfig(filename="sensor_log.log", level=logging.INFO,
@@ -28,12 +30,15 @@ RETENTION_DAYS = args.retention_days
 i2c = busio.I2C(board.SCL, board.SDA)
 ads = ADS.ADS1115(i2c)
 
+# Start `send_data_api.py` subprocess
+api_process = subprocess.Popen(["python3", "send_data_api.py"])
+
 # Sensor Configuration (only active sensors are initialized)
 SENSORS = [
     {"analog": ADS.P0, "digital": 14, "active": True},  # Sensor 1
     {"analog": ADS.P1, "digital": 15, "active": True},  # Sensor 2
     {"analog": ADS.P2, "digital": 18, "active": True},  # Sensor 3
-    {"analog": ADS.P3, "digital": 23, "active": True},   # Sensor 4
+    {"analog": ADS.P3, "digital": 23, "active": True},  # Sensor 4
 ]
 
 ADDR_PIN = 7  # GPIO7 for address configuration
@@ -57,6 +62,7 @@ def handle_shutdown(signum, frame):
     logging.info("GPIO Cleanup Done.")
     if conn:
         conn.close()
+    api_process.terminate()  # Terminate the API subprocess
     sys.exit(0)
 
 signal.signal(signal.SIGTERM, handle_shutdown)
@@ -131,11 +137,13 @@ def read_sensors():
 def manage_data_retention():
     """Delete records older than the retention period."""
     try:
+        cutoff_date = datetime.now() - timedelta(days=RETENTION_DAYS)
         cursor = conn.cursor()
         cursor.execute("""
-            DELETE FROM moisture_data WHERE timestamp < datetime('now', ?) LIMIT 1000
-        """, (f'-{RETENTION_DAYS} days',))
+            DELETE FROM moisture_data WHERE timestamp < ?
+        """, (cutoff_date.strftime("%Y-%m-%d %H:%M:%S"),))
         conn.commit()
+        logging.info(f"Old data deleted up to {cutoff_date}.")
     except sqlite3.Error as e:
         logging.error(f"Data retention error: {e}")
 

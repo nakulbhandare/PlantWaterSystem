@@ -59,10 +59,10 @@ else
     echo "Warning: plant_monitor.py not found!"
 fi
 
-# Step 7: Setup Auto-Start with systemd
-echo "Setting up auto-start using systemd..."
+# Step 7: Setup Auto-Start with systemd for plant_monitor
 SERVICE_FILE="/etc/systemd/system/plant_monitor.service"
 
+echo "Setting up auto-start for plant_monitor using systemd..."
 sudo bash -c "cat > $SERVICE_FILE" <<EOF
 [Unit]
 Description=Plant Moisture Monitoring Service
@@ -83,11 +83,43 @@ EOF
 echo "Reloading systemd daemon..."
 sudo systemctl daemon-reload
 
-echo "Enabling and starting the plant_monitor service..."
 sudo systemctl enable plant_monitor.service
 sudo systemctl start plant_monitor.service
 
-# Step 8: Reboot if required
+# Step 8: Optional setup for send_data_api.py
+SEND_API_SERVICE_FILE="/etc/systemd/system/send_data_api.service"
+
+read -p "Do you want to set up send_data_api.py as a service? (y/n): " SETUP_SEND_API
+if [[ "$SETUP_SEND_API" == "y" || "$SETUP_SEND_API" == "Y" ]]; then
+    echo "Setting up auto-start for send_data_api using systemd..."
+    sudo bash -c "cat > $SEND_API_SERVICE_FILE" <<EOF
+[Unit]
+Description=Send Data API Service
+After=multi-user.target
+
+[Service]
+ExecStart=/usr/bin/python3 /home/pi/PlantWaterSystem/embedded/send_data_api.py
+WorkingDirectory=/home/pi/PlantWaterSystem/embedded
+StandardOutput=inherit
+StandardError=inherit
+Restart=always
+User=pi
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    echo "Reloading systemd daemon..."
+    sudo systemctl daemon-reload
+
+    echo "Enabling and starting the send_data_api service..."
+    sudo systemctl enable send_data_api.service
+    sudo systemctl start send_data_api.service
+else
+    echo "Skipping send_data_api service setup."
+fi
+
+# Step 9: Reboot if required
 if [ "$REBOOT_REQUIRED" = true ]; then
     echo "The system needs to reboot to apply I2C configuration changes."
     read -p "Do you want to reboot now? (y/n): " REBOOT_ANSWER
@@ -103,6 +135,6 @@ fi
 
 echo "Setup is complete. You can now check the service status with:"
 echo "sudo systemctl status plant_monitor.service"
-
-echo "If you want to manually run the script, use:"
-echo "python3 plant_monitor.py"
+echo "
+If you have set up send_data_api.py, you can check its status with:"
+echo "sudo systemctl status send_data_api.service"
