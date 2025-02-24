@@ -28,7 +28,7 @@ stages:
     - task: SSH@0
       displayName: 'Deploy to Azure VM'
       inputs:
-        sshEndpoint: 'MyAzureVM'
+        sshEndpoint: 'testing'
         runOptions: 'commands'
         commands: |
           cd /path/to/your/app
