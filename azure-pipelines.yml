@@ -19,7 +19,7 @@ stages:
           - checkout: self
 
           - script: |
-              sudo -y docker login -u bhandarenakul -p $(DOCKER_PASSWORD)
+              sudo docker login -u bhandarenakul -p $(DOCKER_PASSWORD)
             displayName: "Build & Push Docker Images"
 
   - stage: Deploy
@@ -39,7 +39,7 @@ stages:
                 - checkout: self
 
                 - script: |
-                    sudo -y docker login -u bhandarenakul -p $(DOCKER_PASSWORD)
+                    sudo docker login -u bhandarenakul -p $(DOCKER_PASSWORD)
 
                     # Run Docker Compose
                     sudo docker-compose -f docker-compose.yml up -d
