@@ -32,7 +32,10 @@ stages:
     jobs:
       - deployment: DeployToVM
         displayName: Deploy to Azure Virtual Machine
-        environment: testing
+        environment:
+         name: testing
+         resourceName: sproutly
+         resourceType: virtualMachine
         strategy:
           runOnce:
             deploy:
