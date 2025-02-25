@@ -1,0 +1,33 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - main  # Change this to your branch name
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build Application
+        run: npm run build
+
+      - name: Run Application
+        run: npm start &
+
+      - name: Show Logs
+        run: |
+          echo "📝 Listing logs from runtime:"
+          tail -f /var/log/syslog | grep "npm" &
