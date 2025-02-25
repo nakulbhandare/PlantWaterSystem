@@ -58,5 +58,5 @@ stages:
                     docker pull bhandarenakul/sproutly-test:frontend-latest
 
                     # Run Docker Compose
-                    docker-compose -f docker-compose.yml up -d
+                    sudo docker-compose -f docker-compose.yml up -d
                   displayName: "Deploy Application"
