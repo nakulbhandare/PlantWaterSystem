@@ -4,34 +4,56 @@
 # https://aka.ms/yaml
 
 trigger:
-- main
+  - main
 
 pool:
   vmImage: 'ubuntu-latest'
 
 stages:
-- stage: Build
-  jobs:
-  - job: BuildDockerImages
-    steps:
-    - task: DockerCompose@0
-      displayName: 'Build and Push Docker Images'
-      inputs:
-        containerregistrytype: 'Container Registry'
-        dockerComposeFile: 'docker-compose.yml'
-        action: 'Build service images'
+  - stage: BuildAndPush
+    displayName: Build and Push Docker Images
+    jobs:
+      - job: BuildAndPushDockerImages
+        displayName: Build and Push Docker Images to Docker Hub
+        steps:
+          - checkout: self
 
-- stage: Deploy
-  jobs:
-  - job: DeployToVM
-    steps:
-    - task: SSH@0
-      displayName: 'Deploy to Azure VM'
-      inputs:
-        sshEndpoint: 'testing'
-        runOptions: 'commands'
-        commands: |
-          cd /path/to/your/app
-          git pull origin main
-          docker-compose down
-          docker-compose up -d
+          - script: |
+              docker login -u bhandarenakul -p $(DOCKER_PASSWORD)
+              docker build -t bhandarenakul/sproutly-test:backend-latest ./backend
+              docker build -t bhandarenakul/sproutly-test:frontend-latest ./frontend
+              docker push bhandarenakul/sproutly-test:backend-latest
+              docker push bhandarenakul/sproutly-test:frontend-latest
+            displayName: "Build & Push Docker Images"
+
+  - stage: Deploy
+    displayName: Deploy to Azure VM
+    dependsOn: BuildAndPush
+    jobs:
+      - deployment: DeployToVM
+        displayName: Deploy to Azure Virtual Machine
+        environment: Sproutly-Env
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+
+                - script: |
+                    docker login -u bhandarenakul -p $(DOCKER_PASSWORD)
+                    
+                    # Install docker-compose if not available
+                    sudo apt-get update
+                    sudo apt-get install -y docker-compose
+
+                    # Stop and remove running containers
+                    docker stop sproutly-api sproutly-frontend nginx || true
+                    docker rm sproutly-api sproutly-frontend nginx || true
+
+                    # Pull latest images from Docker Hub
+                    docker pull bhandarenakul/sproutly-test:backend-latest
+                    docker pull bhandarenakul/sproutly-test:frontend-latest
+
+                    # Run Docker Compose
+                    docker-compose -f docker-compose.yml up -d
+                  displayName: "Deploy Application"
