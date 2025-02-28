@@ -62,7 +62,10 @@ stages:
                     # # Pull latest images from Docker Hub
                     # docker pull bhandarenakul/sproutly-test:backend-latest
                     # docker pull bhandarenakul/sproutly-test:frontend-latest
-
+                    
+                    sed -i "s|bhandarenakul/sproutly-test:backend-latest-.*|bhandarenakul/sproutly-test:backend-latest-$COMMIT_ID|g" docker-compose.yml
+                    sed -i "s|bhandarenakul/sproutly-test:frontend-latest-.*|bhandarenakul/sproutly-test:frontend-latest-$COMMIT_ID|g" docker-compose.yml
+                   
                     # Run Docker Compose
                     sudo docker-compose -f docker-compose.yml up -d
                   displayName: "Deploy Application"
