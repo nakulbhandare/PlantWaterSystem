@@ -24,6 +24,7 @@ stages:
           - checkout: self
 
           - script: |
+              COMMIT_ID=$(Build.SourceVersion)
               docker login -u bhandarenakul -p $(DOCKER_PASSWORD)
               docker build -t bhandarenakul/sproutly-test:backend-latest-$COMMIT_ID ./backend
               docker build -t bhandarenakul/sproutly-test:frontend-latest-$COMMIT_ID ./frontend
@@ -47,6 +48,7 @@ stages:
               steps:
                 - checkout: self
                 - script: |
+                    COMMIT_ID=$(Build.SourceVersion)
                     docker login -u bhandarenakul -p $(DOCKER_PASSWORD)
                     
                     # Install docker-compose if not available
