@@ -25,10 +25,10 @@ stages:
 
           - script: |
               docker login -u bhandarenakul -p $(DOCKER_PASSWORD)
-              docker build -t bhandarenakul/sproutly-test:backend-latest ./backend
-              docker build -t bhandarenakul/sproutly-test:frontend-latest ./frontend
-              docker push bhandarenakul/sproutly-test:backend-latest
-              docker push bhandarenakul/sproutly-test:frontend-latest
+              docker build -t bhandarenakul/sproutly-test:backend-latest-$COMMIT_ID ./backend
+              docker build -t bhandarenakul/sproutly-test:frontend-latest-$COMMIT_ID ./frontend
+              docker push bhandarenakul/sproutly-test:backend-latest-$COMMIT_ID
+              docker push bhandarenakul/sproutly-test:frontend-latest-$COMMIT_ID
             displayName: "Build & Push Docker Images"
 
   - stage: Deploy
